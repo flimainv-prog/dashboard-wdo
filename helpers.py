@@ -90,7 +90,7 @@ def fetch_fmp_data(tickers, interval="5min", days_back=5):
     df_list = []
     
     # Processamento paralelo: Baixa até 5 ativos ao mesmo tempo!
-    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         futures = {executor.submit(fetch_single_ticker_fmp, ticker, interval, start_date, end_date): ticker for ticker in tickers}
         for future in concurrent.futures.as_completed(futures):
             result = future.result()
@@ -124,13 +124,15 @@ def fetch_yf_data(tickers, period="5d"):
 
 @st.cache_data(ttl=3600, max_entries=1)
 def get_historico_base():
-    df_fmp = fetch_fmp_data(TODOS_TICKERS, interval="5min", days_back=10)
+    # REDUZIDO DE 22 PARA 7 DIAS
+    df_fmp = fetch_fmp_data(TODOS_TICKERS, interval="5min", days_back=7)
     tickers_fmp = df_fmp.columns.levels[0].tolist() if not df_fmp.empty else []
     tickers_faltantes = [t for t in TODOS_TICKERS if t not in tickers_fmp]
     
     df_yf = pd.DataFrame()
     if tickers_faltantes:
-        df_yf = fetch_yf_data(tickers_faltantes, period="10d")
+        # REDUZIDO DE 22d PARA 7d
+        df_yf = fetch_yf_data(tickers_faltantes, period="7d")
         
     if not df_fmp.empty and not df_yf.empty:
         return pd.concat([df_fmp, df_yf], axis=1)
