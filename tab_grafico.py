@@ -14,7 +14,7 @@ def render_grafico(start_dt, end_dt, placeholder_dados):
     # --- PROCESSAMENTO DOS DADOS PARA O GRÁFICO (Variável pela Sidebar) ---
     with st.spinner("Processando Inteligência de Gráfico..."):
         verde_count = ativos(VERDE_TICKERS, start_dt, end_dt, modo='alta')
-        vermelha_count = ativos(VERMELHA_TICKERS, start_dt, end_dt, modo='baixa')
+        vermelha_count = ativos(VERMELHA_TICKERS, start_dt, end_dt, modo='alta') # <-- Mude para 'alta'
         mxn_bruto, brl_bruto, mxn_ref, brl_ref = fetch_mxn_brl(start_dt, end_dt)
 
     # Verificação de dados após processamento (sem bloqueio, só warning se vazio)
