@@ -147,17 +147,31 @@ end_dt = pd.Timestamp(f"{end_date} {end_time}").tz_localize(BRT)
 if start_dt > end_dt:
     start_dt, end_dt = end_dt, start_dt
 
+# --- RELÓGIO JS E AUTO-REFRESH ---
 components.html("""
 <script>
 function updateClock() {
     const now = new Date();
-    const options = { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+    const options = {
+        timeZone: 'America/Sao_Paulo',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+    };
     const timeString = now.toLocaleTimeString('pt-BR', options);
     const clockElement = window.parent.document.querySelector('#digital-clock');
-    if (clockElement) { clockElement.innerText = '| ' + timeString; }
+    if (clockElement) {
+        clockElement.innerText = '| ' + timeString;
+    }
 }
 setInterval(updateClock, 1000);
 updateClock();
+
+// CORREÇÃO: Auto-refresh nativo a cada 60 segundos (substitui a biblioteca com erro)
+setTimeout(function(){
+    window.parent.location.reload();
+}, 60000);
 </script>
 """, height=0)
 
