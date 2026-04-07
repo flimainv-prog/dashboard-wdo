@@ -34,8 +34,6 @@ def render_backtest(start_dt, end_dt):
                 v_v = vc_dia.iloc[-1] if not vc_dia.empty else 0
                 v_m = vm_dia.iloc[-1] if not vm_dia.empty else 0
                 
-                idx_l = mxn_dia.index.get_loc(mxn_dia.index[-1], method='nearest')
-                
                 pct_mxn_d = (((mxn_dia - mxn_ref_dia) / mxn_ref_dia) * 100) if mxn_ref_dia != 0 else (mxn_dia * 0)
                 azul_dia = (pct_mxn_d * 40).round(0)
                 
