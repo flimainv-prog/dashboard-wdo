@@ -71,12 +71,13 @@ def fetch_single_ticker_fmp(ticker, interval, start_date, end_date):
                     df_temp.index = df_temp.index.tz_localize('America/New_York').tz_convert(BRT)
                     return df_temp
             else:
-                # Se a API retornou 200 OK, mas a lista veio vazia
-                st.sidebar.error(f"FMP retornou vazio para {ticker}. Verifique se seu plano suporta dados intraday (5min).")
+                # Mostra na tela se a API responder, mas não mandar dados
+                st.sidebar.error(f"FMP retornou VAZIO para {ticker}. Verifique se o ticker {fmp_ticker} existe no FMP.")
         else:
-            # Se a API recusou a conexão (ex: chave inválida)
+            # Mostra na tela se a API bloquear o acesso (ex: chave inválida ou sem permissão)
             st.sidebar.error(f"Erro FMP {ticker}: HTTP {resp.status_code} - {resp.text[:100]}")
     except Exception as e:
+        # Mostra na tela se der timeout ou erro de internet
         st.sidebar.error(f"Timeout/Conexão FMP para {ticker}: {e}")
     return None
 
