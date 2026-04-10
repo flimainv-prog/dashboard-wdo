@@ -32,7 +32,7 @@ from tab_heatmap import render_heatmap
 from helpers import (
     VERDE_TICKERS, VERMELHA_TICKERS, TODOS_TICKERS, BRT,
     get_historico_base, get_dados_recentes, ativos, fetch_mxn_brl,
-    gerar_dias_uteis, ultimo_candle_real, fetch_di_variacao, checar_e_enviar_alerta_di
+    gerar_dias_uteis, ultimo_candle_real, fetch_di_variacao
 )
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
@@ -160,14 +160,12 @@ st.markdown(f"""
 VERDE_TICKERS = ['DX-Y.NYB', 'GC=F', 'SI=F', '^TNX', '^FVX', '^IRX', 'ZB=F', 'USDCAD=X', 'USDJPY=X', 'USDCHF=X', 'USDSEK=X', 'USDMXN=X', 'USDZAR=X', 'USDTRY=X', 'CL=F', 'NG=F']
 VERMELHA_TICKERS = ['SPY', 'QQQ', 'EWZ', 'EEM', 'GLD', 'TLT', 'EURUSD=X', 'GBPUSD=X', 'AUDUSD=X', 'NZDUSD=X', '^GSPC', '^IXIC', '^BVSP', '^HSI', '^N225', '^FTSE', 'HG=F', 'BTC-USD']
 TODOS_TICKERS = list(set(VERDE_TICKERS + VERMELHA_TICKERS + ['USDMXN=X', 'USDBRL=X']))
-EMAIL_REMETENTE = "nois.rco@gmail.com"
-SENHA_APP = ".Lj0882*"
-EMAIL_DESTINO = "flima.jur@gmail.com"
 
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
 }
 
+# --- NOVO SISTEMA DE CACHE GERAL DE DADOS (OTIMIZADO PARA MEMÓRIA) ---
 @st.cache_data(ttl=3600, max_entries=1)
 def get_historico_base():
     agora = pd.Timestamp.now(tz=BRT)
@@ -226,31 +224,6 @@ def checar_e_enviar_alerta_di(*args, **kwargs):
     return None
 
 def fetch_di_variacao(ticker_tv="BMFBOVESPA:DI1F2034", ticker_advfn="DI1F34"):
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "Accept": "application/json, text/plain, */*",
-        "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-    }
-
-    try:
-        url_b3 = f"https://cotacao.b3.com.br/mds/api/v1/DerivativeQuotation/{ticker_advfn.upper()}"
-        headers_b3 = headers.copy()
-        headers_b3["Origin"] = "https://www.b3.com.br"
-        headers_b3["Referer"] = "https://www.b3.com.br/"
-        resp = requests.get(url_b3, headers=headers_b3, timeout=4)
-        if resp.status_code == 200:
-            data = resp.json()
-            sctn = data.get("Sctn", [])
-            if sctn:
-                scty_qtn = sctn[0].get("Data", [])[0].get("SctyQtn", {})
-                var_pts = float(scty_qtn.get("VartnPts", 0))
-                prev_close = float(scty_qtn.get("PrvsDayClsPric", 1))
-                if prev_close > 0:
-                    pct_change = (var_pts / prev_close) * 100
-                    return round(pct_change, 2)
-    except:
-        pass
-
     try:
         url_tv = "https://scanner.tradingview.com/brazil/scan"
         payload = {"symbols": {"tickers": [ticker_tv]}, "columns": ["change"]}
