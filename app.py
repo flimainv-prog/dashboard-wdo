@@ -1,4 +1,3 @@
-# app.py
 import yfinance as yf
 import pandas as pd
 import numpy as np
@@ -21,21 +20,19 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from pathlib import Path
+from datetime import datetime
 import datetime
 
-# --- ABAS ---
 from tab_grafico import render_grafico
 from tab_backtest import render_backtest
 from tab_heatmap import render_heatmap
 
-# --- HELPERS ---
 from helpers import (
     VERDE_TICKERS, VERMELHA_TICKERS, TODOS_TICKERS, BRT,
     get_historico_base, get_dados_recentes, ativos, fetch_mxn_brl,
     gerar_dias_uteis, ultimo_candle_real, fetch_di_variacao
 )
 
-# --- 1. CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
     page_title="Trend Axis WDO",
     page_icon="📈",
@@ -43,7 +40,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- 2. SISTEMA DE BACKGROUND E OCULTAÇÃO DO "RUNNING" ---
 bg_file = Path(__file__).with_name("fundo.png")
 if bg_file.exists():
     try:
@@ -74,7 +70,6 @@ if bg_file.exists():
     except Exception:
         pass
 
-# --- 3. CSS AVANÇADO E COMPACTAÇÃO ---
 st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap');
@@ -156,16 +151,17 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. CESTAS GLOBAIS ---
 VERDE_TICKERS = ['DX-Y.NYB', 'GC=F', 'SI=F', '^TNX', '^FVX', '^IRX', 'ZB=F', 'USDCAD=X', 'USDJPY=X', 'USDCHF=X', 'USDSEK=X', 'USDMXN=X', 'USDZAR=X', 'USDTRY=X', 'CL=F', 'NG=F']
 VERMELHA_TICKERS = ['SPY', 'QQQ', 'EWZ', 'EEM', 'GLD', 'TLT', 'EURUSD=X', 'GBPUSD=X', 'AUDUSD=X', 'NZDUSD=X', '^GSPC', '^IXIC', '^BVSP', '^HSI', '^N225', '^FTSE', 'HG=F', 'BTC-USD']
 TODOS_TICKERS = list(set(VERDE_TICKERS + VERMELHA_TICKERS + ['USDMXN=X', 'USDBRL=X']))
+EMAIL_REMETENTE = "nois.rco@gmail.com"
+SENHA_APP = ".Lj0882*"
+EMAIL_DESTINO = "flima.jur@gmail.com"
 
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
 }
 
-# --- NOVO SISTEMA DE CACHE GERAL DE DADOS (OTIMIZADO PARA MEMÓRIA) ---
 @st.cache_data(ttl=3600, max_entries=1)
 def get_historico_base():
     agora = pd.Timestamp.now(tz=BRT)
