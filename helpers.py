@@ -7,44 +7,38 @@ from datetime import datetime, timedelta, time
 import pytz
 import requests
 import re
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from pathlib import Path
-import concurrent.futures  # <-- Adicionado para deixar o download super rápido!
 
-# Constantes
 BRT = pytz.timezone('America/Sao_Paulo')
 
 VERDE_TICKERS = [
-    'DX-Y.NYB', 'USDCAD=X', 'USDJPY=X', 'USDCHF=X', 'USDSEK=X',
-    'USDMXN=X', 'USDZAR=X', 'USDTRY=X',
-    'TLT', 'ZB=F'
+    'DX-Y.NYB', 'GC=F', 'SI=F', '^TNX', '^FVX', '^IRX', 'ZB=F',
+    'USDCAD=X', 'USDJPY=X', 'USDCHF=X', 'USDSEK=X', 'USDMXN=X',
+    'USDZAR=X', 'USDTRY=X', 'CL=F', 'NG=F'
 ]
 
 VERMELHA_TICKERS = [
-    'SPY', 'QQQ', 'EWZ', 'EEM', '^GSPC', '^IXIC', '^BVSP', '^HSI', '^N225', '^FTSE',
-    'EURUSD=X', 'GBPUSD=X', 'AUDUSD=X', 'NZDUSD=X',
-    'HG=F', 'CL=F', 'NG=F', 'GC=F', 'GLD',
-    'VIXY', '^VIX', 'SLV'
+    'SPY', 'QQQ', 'EWZ', 'EEM', 'GLD', 'TLT', 'EURUSD=X', 'GBPUSD=X',
+    'AUDUSD=X', 'NZDUSD=X', '^GSPC', '^IXIC', '^BVSP', '^HSI', '^N225',
+    '^FTSE', 'HG=F', 'BTC-USD'
 ]
 
 TODOS_TICKERS = list(set(VERDE_TICKERS + VERMELHA_TICKERS + ['USDMXN=X', 'USDBRL=X']))
-
-EMAIL_REMETENTE = "nois.rco@gmail.com"
-SENHA_APP = ".Lj0882*"
-EMAIL_DESTINO = "flima.jur@gmail.com"
 
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
 }
 
-@st.cache_data(ttl=60, max_entries=1, show_spinner=False)
-def fetch_yf_data(tickers, period="5d"):
+@st.cache_data(ttl=3600, max_entries=1)
+def get_historico_base():
+    agora = pd.Timestamp.now(tz=BRT)
+    str_start = (agora - timedelta(days=22)).strftime('%Y-%m-%d')
+    str_end = agora.strftime('%Y-%m-%d')
     try:
         raw = yf.download(
-            tickers,
-            period=period,
+            TODOS_TICKERS,
+            start=str_start,
+            end=str_end,
             interval="5m",
             progress=False,
             group_by='ticker',
@@ -58,47 +52,15 @@ def fetch_yf_data(tickers, period="5d"):
     return pd.DataFrame()
 
 @st.cache_data(ttl=60, max_entries=1, show_spinner=False)
-def fetch_fmp_data(tickers, interval="5min", days_back=5):
-    agora = pd.Timestamp.now(tz=BRT)
-    start = (agora - timedelta(days=days_back)).strftime('%Y-%m-%d')
-    end = (agora + timedelta(days=2)).strftime('%Y-%m-%d')
-    try:
-        raw = yf.download(
-            tickers,
-            start=start,
-            end=end,
-            interval=interval,
-            progress=False,
-            group_by='ticker',
-            threads=False
-        )
-        if not raw.empty and isinstance(raw.columns, pd.MultiIndex):
-            raw.index = raw.index.tz_convert(BRT) if raw.index.tz is not None else raw.index.tz_localize('UTC').tz_convert(BRT)
-            return raw
-    except:
-        pass
-    return pd.DataFrame()
-
-@st.cache_data(ttl=60, max_entries=1, show_spinner=False)
 def get_dados_recentes():
-    df_fmp = fetch_fmp_data(TODOS_TICKERS, interval="5min", days_back=5)
-    tickers_fmp = df_fmp.columns.levels[0].tolist() if not df_fmp.empty else []
-    tickers_faltantes = [t for t in TODOS_TICKERS if t not in tickers_fmp]
-    df_yf = pd.DataFrame()
-    if tickers_faltantes:
-        df_yf = fetch_yf_data(tickers_faltantes, period="5d")
-    if not df_fmp.empty and not df_yf.empty:
-        return pd.concat([df_fmp, df_yf], axis=1)
-    elif not df_fmp.empty:
-        return df_fmp
-    return df_yf
-
-@st.cache_data(ttl=60, max_entries=1, show_spinner=False)
-def get_historico_base():
+    agora = pd.Timestamp.now(tz=BRT)
+    str_start = (agora - timedelta(days=2)).strftime('%Y-%m-%d')
+    str_end = (agora + timedelta(days=2)).strftime('%Y-%m-%d')
     try:
         raw = yf.download(
             TODOS_TICKERS,
-            period="22d",
+            start=str_start,
+            end=str_end,
             interval="5m",
             progress=False,
             group_by='ticker',
@@ -114,9 +76,6 @@ def get_historico_base():
 def get_cached_market_data():
     hist = get_historico_base()
     rec = get_dados_recentes()
-    if hist.empty and rec.empty:
-        st.cache_data.clear()
-        return pd.DataFrame()
     if hist.empty:
         return rec
     if rec.empty:
@@ -126,10 +85,7 @@ def get_cached_market_data():
     return df.sort_index()
 
 def get_market_data(start_dt, end_dt):
-    df = get_cached_market_data()
-    if df.empty:
-        st.cache_data.clear()
-    return df
+    return get_cached_market_data()
 
 def gerar_dias_uteis():
     hoje = pd.Timestamp.now(tz=BRT).date()
@@ -146,46 +102,46 @@ def ultimo_candle_real():
 def ativos(tickers_list, start_dt, end_dt, threshold=0.003, modo='alta'):
     raw_data = get_market_data(start_dt, end_dt)
     if raw_data.empty:
-        fake_idx = pd.date_range(start_dt, end_dt, freq='5min')
-        return pd.Series(dtype=float, index=fake_idx)
+        return pd.Series(dtype=float)
 
-    start_naive, end_naive = start_dt.replace(tzinfo=None), end_dt.replace(tzinfo=None)
+    start_naive = start_dt.replace(tzinfo=None)
+    end_naive = end_dt.replace(tzinfo=None)
 
     series_list = []
     ativos_validos = 0
 
     for ticker in tickers_list:
-        if ticker in raw_data.columns.levels[0]:
-            try:
-                ticker_df = raw_data[ticker]
-                col_name = 'Close' if 'Close' in ticker_df.columns else 'close' if 'close' in ticker_df.columns else None
-                if not col_name:
-                    continue
-
-                s_full = ticker_df[col_name].dropna()
-                if s_full.empty:
-                    continue
-
-                s_full.index = s_full.index.tz_localize(None)
-
-                s_before = s_full[s_full.index <= start_naive]
-                ref_val = float(s_before.iloc[-1]) if not s_before.empty else float(s_full.iloc[0])
-
-                s_window = s_full[(s_full.index >= start_naive) & (s_full.index <= end_naive)]
-                if s_window.empty or ref_val == 0:
-                    continue
-
-                s_window = s_window.resample('5min').last().dropna()
-
-                if s_window.empty:
-                    continue
-
-                s_window.index = s_window.index.tz_localize(BRT)
-                ativos_validos += 1
-                series_list.append(100 * (s_window - ref_val) / abs(ref_val))
-
-            except Exception:
+        try:
+            if ticker not in raw_data.columns.levels[0]:
                 continue
+
+            ticker_df = raw_data[ticker]
+            col_name = 'Close' if 'Close' in ticker_df.columns else 'close' if 'close' in ticker_df.columns else None
+            if not col_name:
+                continue
+
+            s_full = ticker_df[col_name].dropna()
+            if s_full.empty:
+                continue
+
+            s_full.index = s_full.index.tz_localize(None)
+
+            s_before = s_full[s_full.index <= start_naive]
+            ref_val = float(s_before.iloc[-1]) if not s_before.empty else float(s_full.iloc[0])
+
+            s_window = s_full[(s_full.index >= start_naive) & (s_full.index <= end_naive)]
+            if s_window.empty or ref_val == 0:
+                continue
+
+            s_window = s_window.resample('5min').last().dropna()
+            if s_window.empty:
+                continue
+
+            s_window.index = s_window.index.tz_localize(BRT)
+            series_list.append(100 * (s_window - ref_val) / abs(ref_val))
+            ativos_validos += 1
+        except:
+            continue
 
     if not series_list or ativos_validos == 0:
         return pd.Series(dtype=float)
@@ -224,7 +180,8 @@ def fetch_mxn_brl(start_dt, end_dt):
         mxn.index = mxn.index.tz_localize(None)
         brl.index = brl.index.tz_localize(None)
 
-        start_naive, end_naive = start_dt.replace(tzinfo=None), end_dt.replace(tzinfo=None)
+        start_naive = start_dt.replace(tzinfo=None)
+        end_naive = end_dt.replace(tzinfo=None)
         anchor_time = start_naive.replace(hour=0, minute=0, second=0, microsecond=0)
 
         mxn_before = mxn[mxn.index <= anchor_time]
@@ -252,22 +209,10 @@ def fetch_mxn_brl(start_dt, end_dt):
 
         return mxn_resampled, brl_resampled, mxn_ref, brl_ref
 
-    except Exception:
+    except:
         return pd.Series(dtype=float), pd.Series(dtype=float), 0.0, 0.0
 
 def fetch_di_variacao(ticker_tv="BMFBOVESPA:DI1F2034", ticker_advfn="DI1F34"):
-    """
-    Busca variação DIÁRIA do DI Futuro em %.
-    Sistema blindado com 4 fontes de dados em cascata.
-    """
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "Accept": "application/json, text/plain, */*",
-        "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
-        "Referer": "https://www.tradingview.com/",
-        "Origin": "https://www.tradingview.com"
-    }
-
     try:
         url_tv = "https://scanner.tradingview.com/brazil/scan"
         payload = {"symbols": {"tickers": [ticker_tv]}, "columns": ["change"]}
@@ -282,16 +227,18 @@ def fetch_di_variacao(ticker_tv="BMFBOVESPA:DI1F2034", ticker_advfn="DI1F34"):
         pass
 
     try:
-        url_si = f"https://statusinvest.com.br/mercados/futuros/di1f34"
+        url_si = f"https://statusinvest.com.br/juros-futuros/{ticker_advfn.lower()}"
         resp = requests.get(url_si, headers=headers, timeout=4)
         if resp.status_code == 200:
-            txt = resp.text
-            m = re.search(r'([+-]?\d+(?:[.,]\d+)?)\s*%', txt)
-            if m:
-                val = float(m.group(1).replace(',', '.'))
+            match = re.search(r'title="Variação do valor"[^>]*>([+-]?\d+(?:[.,]\d+)?)%', resp.text)
+            if match:
+                val = float(match.group(1).replace(',', '.'))
                 if -15.0 <= val <= 15.0:
                     return round(val, 2)
     except:
         pass
 
     return 0.0
+
+def checar_e_enviar_alerta_di(*args, **kwargs):
+    return None
