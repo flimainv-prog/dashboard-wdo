@@ -1,8 +1,8 @@
-# tab_grafico.py
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from datetime import time
+
 from helpers import (
     ativos, fetch_mxn_brl, ultimo_candle_real, BRT, VERDE_TICKERS, VERMELHA_TICKERS,
     fetch_di_variacao, gerar_dias_uteis
